@@ -54,6 +54,8 @@ i_3ph = NaN(3, NN);
 psi_ph = NaN(3, NN);
 psi_phm = NaN(3, NN);
 
+Pin = NaN(1, NN);
+
 i_dq0 = NaN(3, NN);
 
 Pout = NaN(1, NN);
@@ -62,7 +64,7 @@ vref_dq0 = zeros(3, NN);
 
 res_emf = NaN(3, NN);
 
-v_g = NaN(3, NN);
+v_g = NaN(1, NN);
 
 % Initialization
 
@@ -86,7 +88,7 @@ psi_phm(:, 1) = [psi_am_0 psi_bm_0 psi_cm_0].';
 
 res_emf(:, 1) = [0 0 0].';
 
-v_g(:, 1) = [0 0 0].';
+v_g(1) = 0;
 
 Laa_0 = Ls + Lm*cos(2*theta_e(1));
 Lbb_0 = Ls + Lm*cos(2*(theta_e(1)-2*pi/3));
@@ -166,6 +168,8 @@ for n = 1:NN-1
     T(n) = 3/2 * N * (i_q * (i_q * L_d + psi_m) - i_d*i_q*L_q);
 
     Pout(n) = T(n) * w_m(n);
+
+    Pin(n) = v_pwm(1,n)*i_3ph(1,n) + v_pwm(2,n)*i_3ph(2,n) + v_pwm(3,n)*i_3ph(3,n);
 
     w_dot_m(n) = (T(n) - T_L(n)) / J;
 
@@ -267,7 +271,7 @@ for n = 1:NN-1
              1                1              1           0
     ];
 
-    b = [v_3ph(:,n+1) + 1/dT*(psi_ph(:,n) - psi_phm(:,n+1))
+    b = [v_pwm(:,n+1) + 1/dT*(psi_ph(:,n) - psi_phm(:,n+1))
                              0                              ];
 
     res = A^(-1)*b;
@@ -341,12 +345,14 @@ ylabel('dq currents')
 legend('d', 'q', 'z')
 
 subplot(512)
-plot(tt, sum(i_3ph .* v_3ph))
+plot(tt, Pin)
 hold on
-plot(tt, T .* w_m)
+avg_elec = movmean(Pin, Tsw/dT);
+plot(tt(1:length(avg_elec)), avg_elec)
+plot(tt, Pout)
 xlabel('Time')
 ylabel('Power')
-legend('Electrical', 'Mechanical')
+legend('Electrical', 'Avg elec', 'Mechanical')
 title('Input/Output Power')
 
 subplot(513)
@@ -437,11 +443,8 @@ title('current')
 xlim([0, 1000*dT])
 
 figure
-plot(tt, v_g(1, :))
+plot(tt, v_g)
 hold on
-plot(tt, v_g(2, :))
-plot(tt, v_g(3, :))
-legend('vg_a', 'vg_b', 'vg_c')
 xlabel('Time')
 ylabel('V')
 title('Neutral voltage')
